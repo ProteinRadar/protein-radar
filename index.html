@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Protein Radar confronta prezzi e storico delle proteine in polvere per aiutarti a scegliere quando e dove acquistare.">
+  <meta name="theme-color" content="#f4f1ea">
+  <meta property="og:title" content="Protein Radar — prezzi delle proteine, senza confusione">
+  <meta property="og:description" content="Il comparatore italiano di proteine in polvere con prezzo al kg, costo per proteina e storico dei prezzi. In arrivo.">
+  <meta property="og:type" content="website">
+  <title>Protein Radar — comparatore prezzi proteine</title>
+  <link rel="preconnect" href="https://api.fontshare.com">
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@600,700&display=swap" rel="stylesheet">
+  <style>
+    /* Art direction: price intelligence for fitness nutrition → precise, candid, energetic.
+       Palette: warm neutrals with deep teal, chosen for trust and legibility.
+       Typography: Cabinet Grotesk + Satoshi — character in headlines, clarity in data.
+       Density: balanced. */
+    :root,[data-theme="light"]{
+      --bg:#f4f1ea;--surface:#faf8f3;--surface-2:#fffdf9;--offset:#e9e5dc;
+      --text:#20251f;--muted:#596158;--faint:#777f76;--primary:#075f54;
+      --primary-hover:#064c44;--primary-active:#043c35;--highlight:#d2e5df;
+      --inverse:#fffdf7;--border:#cbc8c0;--success:#2f6b3b;
+      --shadow-sm:0 1px 2px oklch(0.25 0.02 145/.06);--shadow-lg:0 18px 50px oklch(0.25 0.02 145/.13)
+    }
+    [data-theme="dark"]{
+      --bg:#151916;--surface:#1c211d;--surface-2:#222823;--offset:#2a312b;
+      --text:#eef1eb;--muted:#b6beb5;--faint:#929c92;--primary:#63b7a6;
+      --primary-hover:#7cc6b7;--primary-active:#96d2c6;--highlight:#273d36;
+      --inverse:#10221d;--border:#3d463f;--success:#7bb887;
+      --shadow-sm:0 1px 2px oklch(0 0 0/.2);--shadow-lg:0 18px 50px oklch(0 0 0/.35)
+    }
+    :root{--font-display:'Cabinet Grotesk','Arial',sans-serif;--font-body:'Satoshi','Arial',sans-serif;
+      --text-xs:clamp(.75rem,.7rem + .25vw,.875rem);--text-sm:clamp(.875rem,.8rem + .35vw,1rem);
+      --text-base:clamp(1rem,.95rem + .25vw,1.125rem);--text-lg:clamp(1.125rem,1rem + .75vw,1.5rem);
+      --text-xl:clamp(1.5rem,1.2rem + 1.25vw,2.25rem);--text-2xl:clamp(2.35rem,1.45rem + 3.8vw,4.9rem);
+      --s1:.25rem;--s2:.5rem;--s3:.75rem;--s4:1rem;--s5:1.25rem;--s6:1.5rem;--s8:2rem;--s10:2.5rem;--s12:3rem;--s16:4rem;--s20:5rem;--s24:6rem;
+      --r-sm:.375rem;--r-md:.5rem;--r-lg:.75rem;--r-xl:1rem;--r-full:9999px;--ease:180ms cubic-bezier(.16,1,.3,1);--wide:1200px
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth;scroll-padding-top:5rem;-webkit-text-size-adjust:none}body{min-height:100dvh;background:var(--bg);color:var(--text);font:var(--text-base)/1.6 var(--font-body);-webkit-font-smoothing:antialiased}img,svg{display:block;max-width:100%;height:auto}a,button,input{font:inherit}a{color:inherit}button{cursor:pointer}p{max-width:68ch;text-wrap:pretty}h1,h2,h3{line-height:1.08;text-wrap:balance}h1,h2{font-family:var(--font-display)}:focus-visible{outline:2px solid var(--primary);outline-offset:3px;border-radius:var(--r-sm)}::selection{background:var(--highlight)}
+    .skip{position:absolute;left:-999px;top:var(--s2);z-index:99;background:var(--text);color:var(--inverse);padding:var(--s3) var(--s4)}.skip:focus{left:var(--s2)}
+    .container{width:min(100% - 2rem,var(--wide));margin-inline:auto}.site-header{position:sticky;top:0;z-index:20;background:color-mix(in oklch,var(--bg) 88%,transparent);backdrop-filter:blur(14px);border-bottom:1px solid color-mix(in oklch,var(--text) 12%,transparent)}.nav{min-height:68px;display:flex;align-items:center;justify-content:space-between;gap:var(--s4)}.brand{display:flex;align-items:center;gap:var(--s3);font-weight:700;text-decoration:none;letter-spacing:-.02em}.brand-mark{width:32px;color:var(--primary)}.nav-links{display:flex;align-items:center;gap:var(--s6);font-size:var(--text-sm)}.nav-links a{text-decoration:none}.nav-links a:hover{color:var(--primary)}.theme{width:44px;height:44px;display:grid;place-items:center;border:1px solid var(--border);border-radius:var(--r-full);color:var(--text);background:var(--surface)}
+    .hero{padding-block:clamp(var(--s12),8vw,var(--s24)) var(--s16)}.hero-grid{display:grid;grid-template-columns:1.05fr .95fr;align-items:center;gap:clamp(var(--s8),6vw,var(--s20))}.eyebrow{display:inline-flex;align-items:center;gap:var(--s2);color:var(--primary);font-size:var(--text-xs);font-weight:700;letter-spacing:.11em;text-transform:uppercase}.dot{width:8px;height:8px;border-radius:50%;background:var(--primary)}h1{font-size:var(--text-2xl);letter-spacing:-.055em;margin:var(--s5) 0 var(--s6);max-width:13ch}.lead{font-size:var(--text-lg);color:var(--muted);max-width:54ch}.hero-actions{display:flex;align-items:center;gap:var(--s4);margin-top:var(--s8);flex-wrap:wrap}.btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:var(--s3) var(--s5);border-radius:var(--r-md);border:1px solid var(--border);font-size:var(--text-sm);font-weight:700;text-decoration:none;transition:background var(--ease),color var(--ease),border-color var(--ease),transform var(--ease)}.btn-primary{background:var(--primary);color:var(--inverse);border-color:var(--primary)}.btn-primary:hover{background:var(--primary-hover);border-color:var(--primary-hover);transform:translateY(-1px)}.btn-secondary{background:var(--surface)}.btn-secondary:hover{border-color:var(--primary);color:var(--primary)}.hero-visual{position:relative}.hero-visual img{aspect-ratio:16/9;object-fit:cover;border-radius:var(--r-xl);box-shadow:var(--shadow-lg);background:var(--offset)}.price-card{position:absolute;left:var(--s6);bottom:calc(var(--s6) * -1);width:min(260px,72%);padding:var(--s4);background:var(--surface-2);border:1px solid color-mix(in oklch,var(--text) 12%,transparent);border-radius:var(--r-lg);box-shadow:var(--shadow-lg)}.price-card small{display:block;color:var(--muted);font-size:var(--text-xs)}.price-card strong{display:block;font:700 var(--text-xl)/1.2 var(--font-display);margin-top:var(--s1)}.spark{width:100%;height:36px;color:var(--primary);margin-top:var(--s2)}
+    .method{padding-block:var(--s20);background:var(--surface);border-block:1px solid color-mix(in oklch,var(--text) 10%,transparent)}.section-head{display:grid;grid-template-columns:.75fr 1.25fr;gap:var(--s10);align-items:start;margin-bottom:var(--s12)}.section-head h2{font-size:var(--text-xl);letter-spacing:-.035em}.section-head p{color:var(--muted)}.steps{display:grid;grid-template-columns:1.2fr .8fr;gap:var(--s6)}.step-main,.step-list{background:var(--surface-2);border:1px solid color-mix(in oklch,var(--text) 11%,transparent);border-radius:var(--r-lg)}.step-main{padding:clamp(var(--s6),4vw,var(--s12));display:grid;align-content:space-between;min-height:340px}.step-number{font:700 var(--text-xs)/1 var(--font-body);color:var(--primary);letter-spacing:.12em}.step-main h3{font-size:var(--text-xl);margin-top:var(--s16);max-width:16ch}.step-main p{color:var(--muted);margin-top:var(--s4)}.metric{margin-top:var(--s10);display:grid;grid-template-columns:repeat(2,1fr);gap:var(--s4);border-top:1px solid var(--border);padding-top:var(--s6)}.metric b{display:block;font-size:var(--text-lg);font-variant-numeric:tabular-nums}.metric span{font-size:var(--text-xs);color:var(--muted)}.step-list{display:grid}.mini{padding:var(--s6);display:grid;grid-template-columns:auto 1fr;gap:var(--s4);align-items:start}.mini+.mini{border-top:1px solid var(--border)}.mini-num{font-size:var(--text-xs);font-weight:700;color:var(--primary)}.mini h3{font:700 var(--text-lg)/1.2 var(--font-body)}.mini p{font-size:var(--text-sm);color:var(--muted);margin-top:var(--s2)}
+    .roadmap{padding-block:var(--s20)}.roadmap-grid{display:grid;grid-template-columns:1fr 1fr;gap:clamp(var(--s8),6vw,var(--s20));align-items:start}.roadmap h2{font-size:var(--text-xl);letter-spacing:-.035em;margin-bottom:var(--s5)}.roadmap-copy>p{color:var(--muted)}.status{margin-top:var(--s8);padding:var(--s5);border-radius:var(--r-lg);background:var(--highlight);color:var(--text)}.status b{display:block;margin-bottom:var(--s1)}.checklist{list-style:none;border-top:1px solid var(--border)}.checklist li{display:flex;gap:var(--s4);padding:var(--s5) 0;border-bottom:1px solid var(--border)}.check{width:24px;height:24px;flex:0 0 24px;border:1px solid var(--primary);border-radius:50%;display:grid;place-items:center;color:var(--primary);font-size:12px;font-weight:700}.pending{border-color:var(--border);color:var(--muted)}.checklist small{display:block;color:var(--muted);font-size:var(--text-xs);margin-top:var(--s1)}
+    .contact{padding-block:var(--s16) var(--s20)}.contact-box{display:grid;grid-template-columns:1.1fr .9fr;gap:var(--s8);padding:clamp(var(--s6),5vw,var(--s12));border-radius:var(--r-xl);background:var(--primary);color:var(--inverse)}.contact h2{font-size:var(--text-xl);letter-spacing:-.035em}.contact p{margin-top:var(--s3);opacity:.88}.contact-action{display:flex;align-items:center;justify-content:flex-end}.contact .btn{background:var(--inverse);color:#15302a;border-color:var(--inverse)}
+    footer{border-top:1px solid var(--border);padding-block:var(--s8);font-size:var(--text-xs);color:var(--muted)}.footer-grid{display:flex;justify-content:space-between;gap:var(--s6);flex-wrap:wrap}.disclosure{max-width:70ch}.tag{white-space:nowrap}
+    @media(max-width:800px){.nav-links a{display:none}.hero-grid,.section-head,.steps,.roadmap-grid,.contact-box{grid-template-columns:1fr}.hero{padding-top:var(--s12)}h1{max-width:12ch}.hero-visual{margin-top:var(--s4)}.price-card{left:var(--s4);bottom:calc(var(--s5) * -1)}.method{padding-block:var(--s16)}.step-main{min-height:unset}.step-main h3{margin-top:var(--s10)}.section-head{gap:var(--s4);margin-bottom:var(--s8)}.contact-action{justify-content:flex-start}}
+    @media(max-width:480px){.container{width:min(100% - 1.25rem,var(--wide))}.hero-actions{align-items:stretch}.hero-actions .btn{width:100%}.metric{grid-template-columns:1fr}.price-card{position:relative;left:auto;bottom:auto;width:calc(100% - 2rem);margin:-1.25rem auto 0}.contact .btn{width:100%}}
+    @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important}}
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main">Vai al contenuto</a>
+  <header class="site-header">
+    <nav class="nav container" aria-label="Navigazione principale">
+      <a class="brand" href="#top" aria-label="Protein Radar, homepage">
+        <svg class="brand-mark" aria-hidden="true" viewBox="0 0 40 40" fill="none"><path d="M8 30V10h10c6 0 10 3 10 8s-4 8-10 8h-5" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M24 30l8-8" stroke="currentColor" stroke-width="4" stroke-linecap="round"/><circle cx="32" cy="14" r="3" fill="currentColor"/></svg>
+        <span>Protein Radar</span>
+      </a>
+      <div class="nav-links">
+        <a href="#metodo">Come funzionerà</a>
+        <a href="#progetto">Il progetto</a>
+        <a href="#contatti">Contatti</a>
+        <button class="theme" type="button" data-theme-toggle aria-label="Passa alla modalità scura">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+      </div>
+    </nav>
+  </header>
+  <main id="main">
+    <section class="hero" id="top">
+      <div class="container hero-grid">
+        <div>
+          <span class="eyebrow"><span class="dot"></span> Progetto in sviluppo</span>
+          <h1>Compra proteine al momento giusto.</h1>
+          <p class="lead">Protein Radar nascerà per confrontare prezzi, formati e storico delle proteine in polvere. Meno promozioni confuse, più dati utili per scegliere.</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="#contatti">Segui il progetto</a>
+            <a class="btn btn-secondary" href="#metodo">Scopri il metodo</a>
+          </div>
+        </div>
+        <div class="hero-visual">
+          <img src="./assets/protein-hero.jpg" width="2048" height="1152" alt="Confezioni generiche di proteine con misurino e scheda che richiama uno storico prezzi">
+          <div class="price-card" aria-label="Esempio illustrativo di andamento prezzo">
+            <small>Prezzo monitorato · esempio</small><strong>€ / kg</strong>
+            <svg class="spark" viewBox="0 0 220 36" fill="none" aria-hidden="true"><path d="M2 8C27 7 28 14 52 13s25-6 50-3 29 21 53 17 33-18 63-20" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><circle cx="218" cy="7" r="4" fill="currentColor"/></svg>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section class="method" id="metodo">
+      <div class="container">
+        <div class="section-head"><h2>Un confronto fatto sui numeri.</h2><p>Il prezzo della confezione da solo non basta. L'obiettivo è normalizzare i dati, conservare le variazioni nel tempo e rendere confrontabili prodotti con formati e concentrazioni diverse.</p></div>
+        <div class="steps">
+          <article class="step-main"><div><span class="step-number">01 · CONFRONTA</span><h3>Una misura comune per prodotti diversi.</h3><p>Prezzo per chilogrammo e costo per quantità di proteine effettive, accanto al prezzo della confezione.</p></div><div class="metric"><div><b>€/kg</b><span>prezzo normalizzato</span></div><div><b>€/25 g</b><span>di proteine effettive</span></div></div></article>
+          <div class="step-list">
+            <article class="mini"><span class="mini-num">02</span><div><h3>Segui lo storico</h3><p>Grafici per vedere oscillazioni, minimi recenti e frequenza delle promozioni.</p></div></article>
+            <article class="mini"><span class="mini-num">03</span><div><h3>Valuta il momento</h3><p>Un'indicazione chiara per capire se il prezzo corrente è interessante rispetto al passato.</p></div></article>
+            <article class="mini"><span class="mini-num">04</span><div><h3>Vai al negozio</h3><p>Collegamenti trasparenti al rivenditore, con eventuali link affiliati chiaramente segnalati.</p></div></article>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section class="roadmap" id="progetto">
+      <div class="container roadmap-grid">
+        <div class="roadmap-copy"><h2>Prima le proteine. Poi il resto.</h2><p>La prima versione sarà focalizzata sul mercato italiano delle proteine in polvere. Dopo aver validato raccolta e qualità dei prezzi, il progetto potrà estendersi ad altri alimenti e integratori fitness.</p><div class="status"><b>Stato attuale</b>Landing pubblica e preparazione delle fonti dati. Il comparatore non è ancora operativo.</div></div>
+        <ol class="checklist">
+          <li><span class="check">✓</span><div><b>Definizione del progetto</b><small>Metodo di confronto e perimetro iniziale.</small></div></li>
+          <li><span class="check">✓</span><div><b>Presenza online</b><small>Landing informativa per presentare Protein Radar.</small></div></li>
+          <li><span class="check pending">3</span><div><b>Raccolta dei prezzi</b><small>Integrazione di feed autorizzati e prime serie storiche.</small></div></li>
+          <li><span class="check pending">4</span><div><b>Lancio del comparatore</b><small>Ricerca, filtri, grafici e collegamenti ai negozi.</small></div></li>
+        </ol>
+      </div>
+    </section>
+    <section class="contact" id="contatti">
+      <div class="container contact-box">
+        <div><h2>Vuoi seguire Protein Radar?</h2><p>Il progetto è in costruzione. Per collaborazioni, suggerimenti o richieste puoi scrivere all'indirizzo dedicato.</p></div>
+        <div class="contact-action"><a class="btn" href="mailto:info.proteinradar@gmail.com">Scrivi al progetto</a></div>
+      </div>
+    </section>
+  </main>
+  <footer><div class="container footer-grid"><p class="disclosure"><strong>Trasparenza:</strong> in futuro alcune pagine potranno contenere link di affiliazione. Se un acquisto sarà effettuato tramite tali link, Protein Radar potrà ricevere una commissione senza costi aggiuntivi per l'utente. I confronti resteranno basati su criteri dichiarati.</p><p class="tag">© 2026 Protein Radar · Nome provvisorio</p></div></footer>
+  <script>
+    (()=>{const root=document.documentElement;const btn=document.querySelector('[data-theme-toggle]');let theme=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';const draw=()=>{root.dataset.theme=theme;btn.setAttribute('aria-label',theme==='dark'?'Passa alla modalità chiara':'Passa alla modalità scura');btn.innerHTML=theme==='dark'?'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>':'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>'};draw();btn.addEventListener('click',()=>{theme=theme==='dark'?'light':'dark';draw()})})();
+  </script>
+</body>
+</html>
