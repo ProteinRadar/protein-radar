@@ -112,29 +112,24 @@ def click_exact(page, value):
     raise ValueError(f"Unable to select option {value}")
 
 
-def variant_check(page, value):
-    """Fail closed unless product selection is visibly reflected by a selected control."""
-    pattern = re.compile(r"^\s*" + re.escape(value).replace(r"\.", r"[.,]") + r"\s*$", re.I)
-    for locator in [
-        page.get_by_role("radio", name=pattern),
-        page.locator("input[type=radio]:checked").locator("xpath=.."),
-        page.locator("button[aria-pressed=true]").filter(has_text=pattern),
-        page.locator("[aria-selected=true]").filter(has_text=pattern),
-        page.locator("option:checked").filter(has_text=pattern),
-    ]:
-        try:
-            for i in range(min(locator.count(), 12)):
-                node = locator.nth(i)
-                if node.is_visible(timeout=400) and (node.get_attribute("checked") is not None or
-                        node.get_attribute("aria-checked") == "true" or
-                        node.get_attribute("aria-pressed") == "true" or
-                        node.get_attribute("aria-selected") == "true" or
-                        node.evaluate("(el) => el.matches(':checked')") or
-                        node.locator("input:checked").count() > 0):
-                    return True
-        except BrowserError:
-            continue
-    return False
+def bulk_selected_variant(page, grams):
+    """Read actual selected radio and select option, not adjacent visible labels."""
+    size = page.locator("input[type=radio][name=bp_size]:checked")
+    if size.count() != 1:
+        return False
+    element_id = size.get_attribute("id")
+    labels = page.locator("label[for]").all()
+    selected_weight = ""
+    for label in labels:
+        if label.get_attribute("for") == element_id:
+            selected_weight = label.inner_text(timeout=2000).strip()
+            break
+    selected_flavour = page.locator("select[aria-label='Gusto'] option:checked")
+    if selected_flavour.count() != 1:
+        return False
+    flavour = selected_flavour.first.inner_text(timeout=2000).strip()
+    expected = weight_label(grams).replace(" ", "").lower()
+    return selected_weight.replace(" ", "").lower() == expected and flavour.lower() == "non aromatizzato"
 
 
 def money_amount(raw):
@@ -206,6 +201,25 @@ def save_diagnostic(page, item, error):
                 headings: Array.from(document.querySelectorAll('h1,h2')).map(n => n.innerText.trim()).slice(0,20),
                 options: relevant.slice(0,150),
                 prices: (document.body?.innerText || '').split('\\n').map(s => s.trim()).filter(s => /€|prezzo/i.test(s)).slice(0,80),
+                buyBox: (() => {
+                    let button = document.querySelector('#add-to-basket');
+                    if (!button) return [];
+                    const result = [];
+                    for (let i = 0; button && i < 8; i++, button = button.parentElement) {
+                        result.push({
+                            tag: button.tagName,
+                            classes: typeof button.className === 'string' ? button.className : '',
+                            text: (button.innerText || '').slice(0,9000),
+                            html: button.outerHTML.slice(0,9000)
+                        });
+                    }
+                    return result;
+                })(),
+                priceNodes: Array.from(document.querySelectorAll(
+                    '[class*="price"],[data-e2e*="price"],[data-testid*="price"],[itemprop="price"]'
+                )).map(n => ({tag:n.tagName, classes:typeof n.className === 'string' ? n.className : '',
+                    text:(n.innerText || '').slice(0,300), html:n.outerHTML.slice(0,1200)
+                })).filter(n => n.text && /€|\\d[.,]\\d\\d/.test(n.text)).slice(0,75),
             };
         }""")
         snapshot.update({"product": label, "shop": shop, "weight_g": grams, "error": str(error)[:350]})
@@ -257,7 +271,7 @@ def scrape(page, item):
     LOG.info("Checking %s", label)
     page.goto(url, wait_until="domcontentloaded", timeout=45000)
     page.wait_for_timeout(1200)
-    for title in ("Accetta tutti", "Accetta tutto", "Accept all"):
+    for title in ("Va bene", "Accept All", "Accetta tutti", "Accetta tutto", "Accept all"):
         try:
             b = page.get_by_role("button", name=title, exact=True).first
             if b.is_visible(timeout=500):
@@ -273,10 +287,16 @@ def scrape(page, item):
         click_exact(page, "Non aromatizzato")
         click_exact(page, weight_label(grams))
         page.wait_for_timeout(850)
-        if not variant_check(page, weight_label(grams)):
-            raise ValueError("Bulk size not confirmed by selected control")
-        if not variant_check(page, "Non aromatizzato"):
-            raise ValueError("Bulk flavour not confirmed by selected control")
+        if not bulk_selected_variant(page, grams):
+            raise ValueError("Bulk size/flavour did not match the selected controls")
+        # Wait for the dynamically updated heading/price after changing the variant.
+        page.wait_for_function(
+            """(expected) => {
+                const h = document.querySelector('h1.header-title');
+                return !!h && h.innerText.toLowerCase().includes(expected.toLowerCase());
+            }""",
+            arg=weight_label(grams), timeout=8000
+        )
         return extract_bulk_price(page)
 
     variant_id = parse_qs(urlparse(url).query).get("variation", [None])[0]
@@ -285,6 +305,10 @@ def scrape(page, item):
     landed_id = parse_qs(urlparse(page.url).query).get("variation", [None])[0]
     if landed_id and landed_id != variant_id:
         raise ValueError("Myprotein changed variation ID")
+    add_to_cart = page.locator("#add-to-basket").first
+    sku = add_to_cart.get_attribute("data-sku", timeout=5000)
+    if sku != variant_id:
+        raise ValueError(f"Myprotein purchase SKU mismatch: selected {sku}, expected {variant_id}")
     return extract_myprotein_price(page, grams)
 
 
