@@ -4,7 +4,7 @@ Il programma `scripts/daily_protein_track.py` legge le intestazioni con hyperlin
 
 ## Stato e limiti
 
-- Il codice è un **prototipo**: non è ancora stato provato con successo contro le pagine reali Bulk e Myprotein.
+- Il codice è un **prototipo validato il 08/10/2026**: una prima esecuzione GitHub Actions ha verificato tutti gli 11 prodotti e scritto i prezzi nel foglio. I siti possono cambiare in futuro; le varianti rimangono soggette a verifica ad ogni rilevazione.
 - Bulk: prova a selezionare «Non aromatizzato» e il peso indicato nell'intestazione.
 - Myprotein: usa il parametro `variation` già presente nel link.
 - Se la variante, il prezzo o la disponibilità non sono verificabili, la cella resta vuota; i log indicano il problema.
