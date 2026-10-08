@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   record-prices:
@@ -13,20 +14,28 @@ jobs:
     timeout-minutes: 20
     env:
       PROTEIN_SHEET_ID: ${{ secrets.PROTEIN_SHEET_ID }}
-      PROTEIN_GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.PROTEIN_GOOGLE_SERVICE_ACCOUNT_JSON }}
+      WIF_PROVIDER: ${{ secrets.PROTEIN_WORKLOAD_IDENTITY_PROVIDER }}
+      WIF_SERVICE_ACCOUNT: ${{ secrets.PROTEIN_GOOGLE_SERVICE_ACCOUNT }}
     steps:
       - name: Check configuration
         id: config
         shell: bash
         run: |
-          if [[ -z "$PROTEIN_SHEET_ID" || -z "$PROTEIN_GOOGLE_SERVICE_ACCOUNT_JSON" ]]; then
+          if [[ -z "$PROTEIN_SHEET_ID" || -z "$WIF_PROVIDER" || -z "$WIF_SERVICE_ACCOUNT" ]]; then
             echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "Missing Google Sheets credentials; see docs/daily-protein-track.md"
+            echo "Missing keyless Google authentication settings; see docs/daily-protein-track.md"
           else
             echo "configured=true" >> "$GITHUB_OUTPUT"
           fi
       - uses: actions/checkout@v4
         if: steps.config.outputs.configured == 'true'
+      - name: Authenticate Google (no JSON key)
+        uses: google-github-actions/auth@v3
+        if: steps.config.outputs.configured == 'true'
+        with:
+          workload_identity_provider: ${{ secrets.PROTEIN_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.PROTEIN_GOOGLE_SERVICE_ACCOUNT }}
+          create_credentials_file: true
       - uses: actions/setup-python@v5
         if: steps.config.outputs.configured == 'true'
         with:
