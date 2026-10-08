@@ -5,11 +5,13 @@ Requires PROTEIN_SHEET_ID and Google Application Default Credentials (GitHub OID
 """
 import argparse
 import logging
+import json
 import os
 import re
 import time
 from datetime import datetime
 from decimal import Decimal
+from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 from zoneinfo import ZoneInfo
 
@@ -143,12 +145,78 @@ def money_amount(raw):
 
 
 def extract_bulk_price(page):
-    # Extract from purchase area only and explicitly anchor to current/discounted price.
-    text = page.locator("main").inner_text(timeout=10000)
+    # There can be multiple <main> tags, including a secondary delivery panel.
+    text = page.locator("main").first.inner_text(timeout=10000)
     m = re.search(r"Prezzo\s+finale\s*:\s*(\d{1,4}[.,]\d{2})\s*€", text, re.I)
     if not m:
         raise ValueError("Bulk current price label not found")
     return money_amount(m[1])
+
+
+def visible_product_heading(page):
+    """Ignore hidden H1 nodes used by responsive navigation."""
+    for _ in range(5):
+        headings = page.locator("h1:visible").all()
+        for heading in headings:
+            try:
+                value = heading.inner_text(timeout=1500).strip()
+                if value:
+                    return value.lower()
+            except BrowserError:
+                pass
+        page.wait_for_timeout(500)
+    # Some pages use an alternative heading role.
+    headings = page.locator("[role=heading][aria-level='1']:visible").all()
+    for heading in headings:
+        value = heading.inner_text(timeout=1500).strip()
+        if value:
+            return value.lower()
+    raise ValueError("No visible product heading")
+
+
+def save_diagnostic(page, item, error):
+    """Record a limited, publicly visible DOM snapshot for selector troubleshooting."""
+    _, label, url, shop, grams = item
+    directory = Path("artifacts/diagnostics")
+    directory.mkdir(parents=True, exist_ok=True)
+    safe_name = re.sub(r"[^a-z0-9]+", "-", label.lower()).strip("-")[:70]
+    output = directory / (safe_name + ".json")
+    try:
+        snapshot = page.evaluate("""() => {
+            const nodes = Array.from(document.querySelectorAll(
+                'h1,h2,button,label,select,option,input,[role="radio"],[role="option"],[aria-pressed],[aria-selected],[data-testid]'
+            ));
+            const relevant = nodes.map(n => ({
+                tag: n.tagName,
+                role: n.getAttribute('role'),
+                text: (n.innerText || n.textContent || '').trim().slice(0,150),
+                checked: n.checked === true,
+                selected: n.selected === true,
+                ariaChecked: n.getAttribute('aria-checked'),
+                ariaSelected: n.getAttribute('aria-selected'),
+                ariaPressed: n.getAttribute('aria-pressed'),
+                value: (n.value || '').toString().slice(0,80),
+                className: typeof n.className === 'string' ? n.className.slice(0,140) : '',
+                testid: n.getAttribute('data-testid'),
+                html: n.outerHTML.slice(0,350)
+            })).filter(n => /prezzo|price|€|500g|450g|900g|1kg|2.5kg|5kg|2700g|3600g|aromatizzato|carrello|weight|size|flavo(u)?r/i.test(n.text + ' ' + n.value + ' ' + n.testid));
+            return {
+                path: location.pathname,
+                title: document.title,
+                headings: Array.from(document.querySelectorAll('h1,h2')).map(n => n.innerText.trim()).slice(0,20),
+                options: relevant.slice(0,150),
+                prices: (document.body?.innerText || '').split('\\n').map(s => s.trim()).filter(s => /€|prezzo/i.test(s)).slice(0,80),
+            };
+        }""")
+        snapshot.update({"product": label, "shop": shop, "weight_g": grams, "error": str(error)[:350]})
+        output.write_text(json.dumps(snapshot, ensure_ascii=False, indent=2), encoding="utf-8")
+        LOG.warning("Diagnostic saved: %s", output)
+        try:
+            page.screenshot(path=str(directory / (safe_name + ".png")), full_page=False, timeout=7000)
+        except BrowserError:
+            pass
+    except Exception as diag_error:
+        LOG.warning("Could not save diagnostic for %s: %s", label, str(diag_error)[:180])
 
 
 def extract_myprotein_price(page, requested_weight):
@@ -197,7 +265,7 @@ def scrape(page, item):
                 break
         except BrowserError:
             pass
-    h1 = page.locator("h1").first.inner_text(timeout=10000).lower()
+    h1 = visible_product_heading(page)
     keyword = "soia" if "soia" in label.lower() else ("impact whey" if shop == "myprotein" else "whey")
     if keyword not in h1:
         raise ValueError(f"Wrong product title: {h1!r}")
@@ -265,6 +333,7 @@ def main():
                 LOG.info("VERIFIED: %s EUR %.2f", item[1], price)
             except (ValueError, BrowserError, TimeoutError) as exc:
                 LOG.warning("NOT VERIFIED: %s (%s)", item[1], str(exc)[:300])
+                save_diagnostic(page, item, exc)
             finally:
                 page.close()
             time.sleep(1)
