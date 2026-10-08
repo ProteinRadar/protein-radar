@@ -1,10 +1,9 @@
 """Experimental ProteinRadar price history tracker.
 
 Reads linked headings in Foglio1 row 1; only fills verified daily prices.
-Requires PROTEIN_SHEET_ID and PROTEIN_GOOGLE_SERVICE_ACCOUNT_JSON.
+Requires PROTEIN_SHEET_ID and Google Application Default Credentials (GitHub OIDC).
 """
 import argparse
-import json
 import logging
 import os
 import re
@@ -14,14 +13,14 @@ from decimal import Decimal
 from urllib.parse import parse_qs, urlparse
 from zoneinfo import ZoneInfo
 
-from google.oauth2 import service_account
+import google.auth
 from googleapiclient.discovery import build
 from playwright.sync_api import sync_playwright, Error as BrowserError
 
 LOG = logging.getLogger("proteinradar")
 TAB = "Foglio1"
-MONEY = re.compile(r"(?<![\\d])(\\d{1,4}[.,]\\d{2})\\s*€")
-WEIGHT = re.compile(r"(\\d+(?:[.,]\\d+)?)\\s*(kg|g)\\s*$", re.I)
+MONEY = re.compile(r"(?<![\d])(\d{1,4}[.,]\d{2})\s*€")
+WEIGHT = re.compile(r"(\d+(?:[.,]\d+)?)\s*(kg|g)\s*$", re.I)
 
 
 def weight_in_grams(label):
@@ -36,11 +35,11 @@ def weight_label(grams):
 
 
 def sheets_api():
-    info = json.loads(os.environ["PROTEIN_GOOGLE_SERVICE_ACCOUNT_JSON"])
-    creds = service_account.Credentials.from_service_account_info(
-        info, scopes=["https://www.googleapis.com/auth/spreadsheets"]
+    # google-github-actions/auth provides short-lived, keyless credentials via ADC.
+    credentials, _ = google.auth.default(
+        scopes=["https://www.googleapis.com/auth/spreadsheets"]
     )
-    return build("sheets", "v4", credentials=creds, cache_discovery=False)
+    return build("sheets", "v4", credentials=credentials, cache_discovery=False)
 
 
 def get_products(api, sheet_id):
@@ -64,7 +63,7 @@ def get_products(api, sheet_id):
         url = cell.get("hyperlink", "")
         if not url:
             formula = cell.get("userEnteredValue", {}).get("formulaValue", "")
-            match = re.search(r'=?HYPERLINK\\("([^"]+)"', formula, re.I)
+            match = re.search(r'=?HYPERLINK\("([^"]+)"', formula, re.I)
             if match:
                 url = match[1]
         if not url:
@@ -82,7 +81,7 @@ def get_products(api, sheet_id):
 
 def click_exact(page, value):
     """Choose a visible, interactive flavor/size control rather than a text occurrence."""
-    pattern = re.compile(r"^\\s*" + re.escape(value).replace(r"\\.", r"[.,]") + r"\\s*$", re.I)
+    pattern = re.compile(r"^\s*" + re.escape(value).replace(r"\.", r"[.,]") + r"\s*$", re.I)
     queries = [
         page.get_by_role("radio", name=pattern),
         page.get_by_role("button", name=pattern),
@@ -113,7 +112,7 @@ def click_exact(page, value):
 
 def variant_check(page, value):
     """Fail closed unless product selection is visibly reflected by a selected control."""
-    pattern = re.compile(r"^\\s*" + re.escape(value).replace(r"\\.", r"[.,]") + r"\\s*$", re.I)
+    pattern = re.compile(r"^\s*" + re.escape(value).replace(r"\.", r"[.,]") + r"\s*$", re.I)
     for locator in [
         page.get_by_role("radio", name=pattern),
         page.locator("input[type=radio]:checked").locator("xpath=.."),
@@ -146,7 +145,7 @@ def money_amount(raw):
 def extract_bulk_price(page):
     # Extract from purchase area only and explicitly anchor to current/discounted price.
     text = page.locator("main").inner_text(timeout=10000)
-    m = re.search(r"Prezzo\\s+finale\\s*:\\s*(\\d{1,4}[.,]\\d{2})\\s*€", text, re.I)
+    m = re.search(r"Prezzo\s+finale\s*:\s*(\d{1,4}[.,]\d{2})\s*€", text, re.I)
     if not m:
         raise ValueError("Bulk current price label not found")
     return money_amount(m[1])
@@ -168,13 +167,13 @@ def extract_myprotein_price(page, requested_weight):
     if not excerpt:
         raise ValueError("Myprotein purchase block not readable")
     # Reject pages explicitly showing a different size or flavour.
-    variant = re.search(r"Impact Whey Protein\\s*[-–]\\s*(\\d+)\\s*g\\b[^\\n]{0,80}", excerpt, re.I)
+    variant = re.search(r"Impact Whey Protein\s*[-–]\s*(\d+)\s*g\b[^\n]{0,80}", excerpt, re.I)
     if variant:
         if int(variant[1]) != requested_weight or "senza aroma" not in variant[0].lower():
             raise ValueError("Myprotein displayed size/flavour mismatch")
     first_segment = re.split(r"Aggiungi al carrello", excerpt, 1, flags=re.I)[0]
     # If the page exposes a current-price label, use it.
-    current = re.search(r"(?:Prezzo\\s+(?:scontato|attuale)|Ora)\\s*:?\\s*(\\d{1,4}[.,]\\d{2})\\s*€",
+    current = re.search(r"(?:Prezzo\s+(?:scontato|attuale)|Ora)\s*:?\s*(\d{1,4}[.,]\d{2})\s*€",
                         first_segment, re.I)
     if current:
         return money_amount(current[1])
