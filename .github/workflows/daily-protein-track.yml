@@ -1,0 +1,43 @@
+name: Daily ProteinTrack
+on:
+  schedule:
+    - cron: '0 5 * * *' # 06:00 winter / 07:00 summer in Italy
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  record-prices:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PROTEIN_SHEET_ID: ${{ secrets.PROTEIN_SHEET_ID }}
+      PROTEIN_GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.PROTEIN_GOOGLE_SERVICE_ACCOUNT_JSON }}
+    steps:
+      - name: Check configuration
+        id: config
+        shell: bash
+        run: |
+          if [[ -z "$PROTEIN_SHEET_ID" || -z "$PROTEIN_GOOGLE_SERVICE_ACCOUNT_JSON" ]]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Missing Google Sheets credentials; see docs/daily-protein-track.md"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.config.outputs.configured == 'true'
+      - uses: actions/setup-python@v5
+        if: steps.config.outputs.configured == 'true'
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-price-tracker.txt
+      - name: Install dependencies and Chromium
+        if: steps.config.outputs.configured == 'true'
+        run: |
+          python -m pip install -r requirements-price-tracker.txt
+          python -m playwright install --with-deps chromium
+      - name: Check prices and update Google Sheet
+        if: steps.config.outputs.configured == 'true'
+        run: python scripts/daily_protein_track.py --write
