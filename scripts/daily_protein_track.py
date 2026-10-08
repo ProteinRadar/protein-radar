@@ -4,6 +4,7 @@ Reads linked headings in Foglio1 row 1; only fills verified daily prices.
 Requires PROTEIN_SHEET_ID and Google Application Default Credentials (GitHub OIDC).
 """
 import argparse
+import base64
 import logging
 import json
 import os
@@ -12,7 +13,7 @@ import time
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, urlparse, urlencode, urlunparse
 from zoneinfo import ZoneInfo
 
 import google.auth
@@ -140,12 +141,32 @@ def money_amount(raw):
 
 
 def extract_bulk_price(page):
-    # There can be multiple <main> tags, including a secondary delivery panel.
-    text = page.locator("main").first.inner_text(timeout=10000)
-    m = re.search(r"Prezzo\s+finale\s*:\s*(\d{1,4}[.,]\d{2})\s*€", text, re.I)
-    if not m:
-        raise ValueError("Bulk current price label not found")
-    return money_amount(m[1])
+    # Product-specific price panel, not the list of recommended products.
+    panel = page.locator(".pdp-product__prices").first
+    for selector in (
+        ".pdp-product__price-special span.dropin-price",
+        ".pdp-product__price-regular span.dropin-price",
+    ):
+        loc = panel.locator(selector)
+        if loc.count() > 0:
+            raw = loc.first.inner_text(timeout=7000)
+            amounts = MONEY.findall(raw)
+            if len(amounts) == 1:
+                return money_amount(amounts[0])
+    raise ValueError("Bulk price panel has no unique current price")
+
+
+def bulk_variant_url(url, grams):
+    """Use concrete size IDs captured from Bulk's public configurable-variant controls."""
+    size_id = {500: 69, 1000: 25, 2500: 33, 5000: 34}.get(grams)
+    if size_id is None:
+        raise ValueError(f"No Bulk size mapping for {grams}g")
+    # Gusto/Flavour 178-32 is exactly 'Non aromatizzato' in the observed options.
+    encoded = base64.b64encode(f"179-{size_id},178-32".encode()).decode()
+    parsed = urlparse(url)
+    return urlunparse(parsed._replace(query=urlencode({"o": encoded}), fragment=""))
+
+
 
 
 def visible_product_heading(page):
@@ -234,42 +255,38 @@ def save_diagnostic(page, item, error):
 
 
 def extract_myprotein_price(page, requested_weight):
-    # Only accept a purchase block containing current product and cart CTA.
-    heading = page.locator("h1").first
-    excerpt = None
-    for depth in (2, 3, 4, 5):
-        try:
-            node = heading.locator("xpath=" + "/".join([".."] * depth))
-            text = node.inner_text(timeout=3000)
-            if "€" in text and re.search(r"Aggiungi al carrello", text, re.I) and len(text) < 12000:
-                excerpt = text
-                break
-        except BrowserError:
-            pass
-    if not excerpt:
-        raise ValueError("Myprotein purchase block not readable")
-    # Reject pages explicitly showing a different size or flavour.
-    variant = re.search(r"Impact Whey Protein\s*[-–]\s*(\d+)\s*g\b[^\n]{0,80}", excerpt, re.I)
-    if variant:
-        if int(variant[1]) != requested_weight or "senza aroma" not in variant[0].lower():
-            raise ValueError("Myprotein displayed size/flavour mismatch")
-    first_segment = re.split(r"Aggiungi al carrello", excerpt, 1, flags=re.I)[0]
-    # If the page exposes a current-price label, use it.
-    current = re.search(r"(?:Prezzo\s+(?:scontato|attuale)|Ora)\s*:?\s*(\d{1,4}[.,]\d{2})\s*€",
-                        first_segment, re.I)
-    if current:
-        return money_amount(current[1])
-    # Fallback ONLY if exactly one EUR price in purchase block.
-    amounts = MONEY.findall(first_segment)
+    # Exact current price in the same purchase block as the SKU-confirmed cart button.
+    button = page.locator("#add-to-basket").first
+    section = button.locator("xpath=..")
+    prices = section.locator(".price-row span.price")
+    if prices.count() != 1:
+        raise ValueError("Myprotein current price not uniquely located in cart block")
+    displayed = prices.first.inner_text(timeout=8000)
+    amounts = MONEY.findall(displayed)
     if len(amounts) != 1:
-        raise ValueError("Ambiguous Myprotein price(s) in purchase block")
+        raise ValueError(f"Myprotein ambiguous current price: {displayed[:80]!r}")
+    # The surrounding variant component exposes 'Dimensione: NN Porzioni / 900g'
+    # or 'Dimensione: NN Porzioni / 2.7kg'. Check this against the heading.
+    options_text = button.locator("xpath=../../../../../..").inner_text(timeout=8000)
+    size_match = re.search(
+        r"Dimensione:\s*(?:\d+\s*Porzioni\s*/\s*)?(\d+(?:[.,]\d+)?\s*(?:kg|g))\b",
+        options_text, re.I
+    )
+    if not size_match:
+        raise ValueError("Myprotein selected pack size label not found")
+    visible_size = weight_in_grams("Selected " + size_match[1])
+    if visible_size != requested_weight:
+        raise ValueError(f"Myprotein pack size mismatch: {visible_size}g != {requested_weight}g")
     return money_amount(amounts[0])
+
+
 
 
 def scrape(page, item):
     col, label, url, shop, grams = item
     LOG.info("Checking %s", label)
-    page.goto(url, wait_until="domcontentloaded", timeout=45000)
+    target_url = bulk_variant_url(url, grams) if shop == "bulk" else url
+    page.goto(target_url, wait_until="domcontentloaded", timeout=45000)
     page.wait_for_timeout(1200)
     for title in ("Va bene", "Accept All", "Accetta tutti", "Accetta tutto", "Accept all"):
         try:
@@ -284,19 +301,12 @@ def scrape(page, item):
     if keyword not in h1:
         raise ValueError(f"Wrong product title: {h1!r}")
     if shop == "bulk":
-        click_exact(page, "Non aromatizzato")
-        click_exact(page, weight_label(grams))
-        page.wait_for_timeout(850)
         if not bulk_selected_variant(page, grams):
-            raise ValueError("Bulk size/flavour did not match the selected controls")
-        # Wait for the dynamically updated heading/price after changing the variant.
-        page.wait_for_function(
-            """(expected) => {
-                const h = document.querySelector('h1.header-title');
-                return !!h && h.innerText.toLowerCase().includes(expected.toLowerCase());
-            }""",
-            arg=weight_label(grams), timeout=8000
-        )
+            raise ValueError(f"Bulk URL variant not applied: expected {weight_label(grams)}, heading {h1!r}")
+        if weight_label(grams).lower() not in h1.replace(" ", "").lower():
+            raise ValueError("Bulk heading pack size mismatch")
+        if "non aromatizzato" not in h1:
+            raise ValueError("Bulk heading flavour mismatch")
         return extract_bulk_price(page)
 
     variant_id = parse_qs(urlparse(url).query).get("variation", [None])[0]
