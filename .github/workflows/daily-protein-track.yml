@@ -3,6 +3,12 @@ on:
   schedule:
     - cron: '0 5 * * *' # 06:00 winter / 07:00 summer in Italy
   workflow_dispatch:
+  # Temporary integration test on script/workflow updates
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/daily_protein_track.py'
+      - '.github/workflows/daily-protein-track.yml'
 
 permissions:
   contents: read
@@ -50,3 +56,11 @@ jobs:
       - name: Check prices and update Google Sheet
         if: steps.config.outputs.configured == 'true'
         run: python scripts/daily_protein_track.py --write
+      - name: Upload failed-product diagnostics
+        if: always() && steps.config.outputs.configured == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: product-page-diagnostics
+          path: artifacts/diagnostics/
+          if-no-files-found: ignore
+          retention-days: 3
